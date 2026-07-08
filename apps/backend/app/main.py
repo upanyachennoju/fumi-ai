@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from apps.backend.app.api.chat import router as chat_router
 
 
 load_dotenv()
@@ -12,6 +12,8 @@ app = FastAPI(
     description="FastAPI backend supporting local intelligence, memory, and tool execution.",
     version="0.1.0"
 )
+
+app.include_router(chat_router)
 
 """
 # Set up CORS for Tauri frontend communication
@@ -23,13 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 """
-
-class ChatMessage(BaseModel):
-    message: str
-
-@app.post("/chat")
-def chat_endpoint(payload: ChatMessage):
-    return {"message": "Hello"}
 
 @app.get("/")
 def read_root():
