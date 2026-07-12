@@ -8,3 +8,11 @@ class BaseLLMProvider(ABC):
     def generate(self, message: str) -> str:
         """Generate a response for the given user message."""
         pass
+
+class EmbeddingProvider(ABC):
+    """Base class for embedding providers."""
+
+    @abstractmethod
+    def embed(self, text: str) -> list[float]:
+        """Generate an embedding for the given text."""
+        raise NotImplementedError

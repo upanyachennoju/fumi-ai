@@ -3,29 +3,30 @@ Fumi Memory Manager Package
 Manages local state, memory hierarchy (short-term, long-term, semantic, episodic).
 """
 
-from packages.knowledge.schemas import Document, Chunk, SearchResult
-from packages.knowledge.vault import KnowledgeVault
-from packages.knowledge.markdown import MarkdownParser
-from packages.knowledge.chunker import TextChunker
-from packages.knowledge.embedder import BaseEmbedder, MockEmbedder
-from packages.knowledge.indexer import VectorIndexer
-from packages.knowledge.retriever import KnowledgeRetriever
-from packages.knowledge.summarizer import KnowledgeSummarizer
-from packages.knowledge.extractor import MetadataExtractor
-from packages.knowledge.archive import KnowledgeArchiver
+from .vault import Vault
+from .enums import VaultDirectory
+from .schemas import ConversationSession, Message, Goal, Journal, Chunk
+from .index import VectorIndex
+from .indexer import Indexer
+from .retriever import Retriever
+from .prompt_builder import PromptBuilder
 
 __all__ = [
-    "Document",
+    "Vault",
+    "VaultDirectory",
+    "ConversationSession",
+    "Message",
+    "Goal",
+    "Journal",
     "Chunk",
-    "SearchResult",
-    "KnowledgeVault",
-    "MarkdownParser",
-    "TextChunker",
-    "BaseEmbedder",
-    "MockEmbedder",
-    "VectorIndexer",
-    "KnowledgeRetriever",
-    "KnowledgeSummarizer",
-    "MetadataExtractor",
-    "KnowledgeArchiver",
+    "VectorIndex",
+    "Indexer",
+    "Retriever",
+    "PromptBuilder",
 ]
+
+
+
+
+
+

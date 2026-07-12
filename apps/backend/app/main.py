@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from apps.backend.app.api.chat import router as chat_router
-
+import uvicorn
 
 load_dotenv()
 
@@ -43,7 +43,6 @@ def get_config():
     }
 
 if __name__ == "__main__":
-    import uvicorn
     port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "127.0.0.1")
     uvicorn.run("main:app", host=host, port=port, reload=True)

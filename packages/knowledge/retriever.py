@@ -1,25 +1,42 @@
-from typing import List
-from packages.knowledge.schemas import SearchResult
-from packages.knowledge.indexer import VectorIndexer
+from typing import Any
+from .index import VectorIndex
+from .schemas import Chunk
+from packages.providers.base import EmbeddingProvider
 
 
-class KnowledgeRetriever:
-    """Retrieves relevant chunks and documents from the indexed knowledge base."""
+class Retriever:
+    """
+    Coordinates semantic search: generates an embedding for a user query,
+    queries the Chroma index, and returns ranked Chunk objects.
+    Does not know anything about prompts.
+    """
 
-    def __init__(self, indexer: VectorIndexer):
-        self.indexer = indexer
+    def __init__(self, index: VectorIndex, embedding_provider: EmbeddingProvider):
+        self.index = index
+        self.embedding_provider = embedding_provider
 
-    def retrieve(self, query: str, top_k: int = 3) -> List[SearchResult]:
-        """Retrieves top-k closest chunks matching the query string."""
-        raw_results = self.indexer.search_similarity(query, top_k=top_k)
-        
-        search_results = []
-        for chunk, score in raw_results:
-            search_results.append(
-                SearchResult(
-                    chunk=chunk,
-                    score=score
+    async def retrieve(
+        self, query: str, n_results: int = 5, where: dict[str, Any] | None = None
+    ) -> list[Chunk]:
+        """
+        Given a user query, generates its embedding, searches VectorIndex,
+        and returns a list of ranked Chunk dataclasses.
+        """
+        query_embedding = await self.embedding_provider.embed(query)
+
+        results = self.index.search(
+            query_embeddings=[query_embedding],
+            n_results=n_results,
+            where=where,
+        )
+
+        chunks = []
+        for r in results:
+            chunks.append(
+                Chunk(
+                    id=r["id"],
+                    text=r["text"],
+                    metadata=r["metadata"],
                 )
             )
-            
-        return search_results
+        return chunks

@@ -1,53 +1,103 @@
-import math
-from typing import Dict, List
-from packages.knowledge.schemas import Chunk
-from packages.knowledge.embedder import BaseEmbedder
+import asyncio
+from typing import Any
+from .vault import Vault
+from .index import VectorIndex
+from .chunker import chunk
+from packages.providers.base import EmbeddingProvider
 
 
-class VectorIndexer:
-    """Manages indexing, storing, and computing vector similarity on chunks."""
+class Indexer:
+    """
+    Orchestrates the indexing pipeline: Reads Markdown from the Vault,
+    semantically chunks it, generates embeddings using a provider, and
+    saves them in the VectorIndex.
+    """
 
-    def __init__(self, embedder: BaseEmbedder):
-        self.embedder = embedder
-        # Map of chunk ID to Chunk object (which contains the embedding)
-        self.index: Dict[str, Chunk] = {}
+    def __init__(self, vault: Vault, index: VectorIndex, embedding_provider: EmbeddingProvider):
+        self.vault = vault
+        self.index = index
+        self.embedding_provider = embedding_provider
 
-    def index_chunks(self, chunks: List[Chunk]) -> None:
-        """Embeds and indexes a list of text chunks."""
-        texts_to_embed = [c.content for c in chunks if c.embedding is None]
-        
-        if texts_to_embed:
-            embeddings = self.embedder.embed_documents(texts_to_embed)
-            embed_idx = 0
-            for chunk in chunks:
-                if chunk.embedding is None:
-                    chunk.embedding = embeddings[embed_idx]
-                    embed_idx += 1
-        
-        for chunk in chunks:
-            self.index[chunk.id] = chunk
+    async def index_document(self, document: Any):
+        """
+        Chunks a document, generates vector embeddings for each chunk concurrently,
+        and adds them to the vector index.
+        """
+        chunks = chunk(document)
+        if not chunks:
+            return
 
-    def search_similarity(self, query: str, top_k: int = 5) -> List[tuple[Chunk, float]]:
-        """Computes cosine similarity of query against indexed chunks."""
-        query_vector = self.embedder.embed_query(query)
-        results = []
+        ids = [c.id for c in chunks]
+        documents = [c.text for c in chunks]
+        metadatas = [c.metadata for c in chunks]
 
-        for chunk in self.index.values():
-            if chunk.embedding is None:
+        # Generate embeddings concurrently using the async embedding provider
+        embed_tasks = [self.embedding_provider.embed(text) for text in documents]
+        embeddings = await asyncio.gather(*embed_tasks)
+
+        self.index.add(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas,
+            embeddings=embeddings,
+        )
+
+    async def delete_document(self, doc_id: str):
+        """
+        Delete all indexed chunks associated with a document ID.
+        """
+        self.index.delete(where={"doc_id": doc_id})
+
+    async def rebuild_index(self):
+        """
+        Rebuilds the entire Chroma vector index from the Vault source of truth.
+        """
+        # Clear the Chroma collection by resetting it
+        try:
+            self.index.client.delete_collection(self.index.collection.name)
+            self.index.collection = self.index.client.get_or_create_collection(self.index.collection.name)
+        except Exception:
+            try:
+                self.index.delete(where={})
+            except Exception:
+                pass
+
+        # Index all goals
+        for goal in self.vault.list_goals():
+            await self.index_document(goal)
+
+        # Index all journals
+        for journal in self.vault.list_journals():
+            await self.index_document(journal)
+
+        # Index all conversations
+        for session_summary in self.vault.list_sessions():
+            try:
+                session, messages = self.vault.load_session(session_summary.id)
+                content_parts = []
+                for msg in messages:
+                    role_header = "## User" if msg.role.lower() == "user" else "## Fumi"
+                    content_parts.append(f"{role_header}\n\n{msg.content}")
+                full_content = "\n\n".join(content_parts)
+
+                # Construct a duck-typed document object for the conversation session
+                class ConversationDoc:
+                    def __init__(self, id_val, content_val, created_val, updated_val, title_val, model_val):
+                        self.id = id_val
+                        self.content = content_val
+                        self.created = created_val
+                        self.updated = updated_val
+                        self.title = title_val
+                        self.model = model_val
+
+                doc = ConversationDoc(
+                    id_val=session.id,
+                    content_val=full_content,
+                    created_val=session.created,
+                    updated_val=session.updated,
+                    title_val=session.title,
+                    model_val=session.model,
+                )
+                await self.index_document(doc)
+            except Exception:
                 continue
-            
-            # Compute cosine similarity
-            similarity = self._cosine_similarity(query_vector, chunk.embedding)
-            results.append((chunk, similarity))
-
-        # Sort by score descending
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
-
-    def _cosine_similarity(self, v1: List[float], v2: List[float]) -> float:
-        dot_product = sum(a * b for a, b in zip(v1, v2))
-        norm_a = math.sqrt(sum(a * a for a in v1))
-        norm_b = math.sqrt(sum(b * b for b in v2))
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-        return dot_product / (norm_a * norm_b)
