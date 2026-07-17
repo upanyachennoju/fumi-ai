@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class BaseLLMProvider(ABC):
     """Abstract base class for all LLM providers in Fumi."""
 
     @abstractmethod
-    def generate(self, message: str) -> str:
-        """Generate a response for the given user message."""
+    def generate(self, message: str | list[Any]) -> str:
+        """Generate a response for the given user message or structured messages."""
         pass
 
 class EmbeddingProvider(ABC):

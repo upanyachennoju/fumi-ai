@@ -5,7 +5,7 @@ Manages local state, memory hierarchy (short-term, long-term, semantic, episodic
 
 from .vault import Vault
 from .enums import VaultDirectory
-from .schemas import ConversationSession, Message, Goal, Journal, Chunk
+from .schemas import ConversationSession, Message, Goal, Journal, Chunk, MemoryExtraction
 from .index import VectorIndex
 from .indexer import Indexer
 from .retriever import Retriever
@@ -19,11 +19,14 @@ __all__ = [
     "Goal",
     "Journal",
     "Chunk",
+    "MemoryExtraction",
     "VectorIndex",
     "Indexer",
     "Retriever",
     "PromptBuilder",
 ]
+
+
 
 
 

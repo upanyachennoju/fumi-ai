@@ -17,7 +17,7 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
-    reply = service.chat(request.message)
+async def chat(request: ChatRequest):
+    reply = await service.chat(request.message)
 
     return ChatResponse(response=reply)

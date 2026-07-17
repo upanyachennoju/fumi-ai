@@ -8,7 +8,11 @@ class PromptBuilder:
     conversation history, and the user's latest message.
     """
 
-    def __init__(self, context_template: str = "Relevant Context:\n{context}"):
+    def __init__(self, context_template: str = (
+        "The following are things you know about the user from past conversations. "
+        "This is background knowledge — do NOT repeat or list these back. "
+        "Only reference a memory if it is directly relevant to what the user just said.\n\n{context}"
+    )):
         self.context_template = context_template
 
     def build(
