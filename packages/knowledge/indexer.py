@@ -5,7 +5,6 @@ from .index import VectorIndex
 from .chunker import chunk
 from packages.providers.base import EmbeddingProvider
 
-
 class Indexer:
     """
     Orchestrates the indexing pipeline: Reads Markdown from the Vault,

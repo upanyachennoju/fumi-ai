@@ -1,2 +1,3 @@
 llm_provider = "ollama"
-llm_model = "gemma3:4b"
+llm_model = "qwen3:4b"
+llm_embed = "nomic-embed-text"

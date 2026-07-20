@@ -32,9 +32,11 @@ class ConversationSummarizer:
         try:
             res = self.llm_provider.generate(prompt)
             if inspect.iscoroutine(res):
-                summary = await res
+                result = await res
             else:
-                summary = res
+                result = res
+            # Provider may return dict with content + metrics, or plain string
+            summary = result["content"] if isinstance(result, dict) else result
             return summary.strip()
         except Exception:
             return "A conversation session."

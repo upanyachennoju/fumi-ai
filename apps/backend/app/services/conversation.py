@@ -14,8 +14,10 @@ from packages.memory.manager import MemoryManager
 from packages.memory.pipeline import MemoryPipeline
 from packages.prompts.system_prompt import SYSTEM_PROMPT
 
-
 class ConversationService:
+    """
+    A service class for managing conversation flows, memory, and tool usage.
+    """
     def __init__(self):
         self.provider = get_llm_provider()
         self.vault = Vault()
@@ -37,13 +39,13 @@ class ConversationService:
             manager=self.manager,
         )
 
-    async def chat(self, message: str) -> str:
+    async def chat(self, message: str) -> dict:
         # 1. Retrieve the active conversation session, or create one if none exists
         sessions = self.vault.list_sessions()
         if sessions:
             session_id = sessions[0].id
         else:
-            model_name = getattr(self.provider, "model", "gemma3:4b")
+            model_name = getattr(self.provider, "model", "qwen3:4b")
             session = self.vault.create_session(model=model_name)
             session_id = session.id
 
@@ -69,9 +71,17 @@ class ConversationService:
         # 5. Call LLM provider with messages
         res = self.provider.generate(messages)
         if inspect.iscoroutine(res):
-            reply = await res
+            result = await res
         else:
-            reply = res
+            result = res
+
+        # Unpack: provider now returns {"content": ..., "metrics": ...}
+        if isinstance(result, dict):
+            reply = result["content"]
+            metrics = result.get("metrics", {})
+        else:
+            reply = result
+            metrics = {}
 
         # 6. Save the new conversation turn (user message & Fumi reply) to the Vault
         self.vault.append_message(session_id, Message(role="user", content=message))
@@ -79,6 +89,6 @@ class ConversationService:
 
         # 7. Asynchronously trigger the MemoryPipeline in the background to summarize,
         # extract new memories, update the Vault, and re-index them.
-        asyncio.create_task(self.pipeline.run(session_id))
+        asyncio.create_task(self.pipeline.run(session_id)) 
 
-        return reply
+        return {"reply": reply, "metrics": metrics}

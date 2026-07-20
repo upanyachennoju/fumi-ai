@@ -40,7 +40,7 @@ async def main():
 
     # 1. Create a dummy active conversation session
     print("\nCreating a test conversation session...")
-    session = vault.create_session(model="gemma3:4b")
+    session = vault.create_session(model="qwen3:4b")
     vault.append_message(
         session.id,
         Message(

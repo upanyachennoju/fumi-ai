@@ -4,7 +4,7 @@ import secrets
 import frontmatter
 
 from .enums import VaultDirectory
-from .schemas import ConversationSession, Message, Goal, Journal
+from .schemas import ConversationSession, Message, Goal, Journal, Reminder
 
 
 class Vault:
@@ -24,6 +24,7 @@ class Vault:
         self.projects = self.root / "projects"
         self.daily = self.root / "daily"
         self.archive = self.root / "archive"
+        self.reminders = self.root / "reminders"
 
         self._ensure_exists()
 
@@ -35,6 +36,9 @@ class Vault:
 
         self.journals_map: dict[str, Path] = {}
         self._load_journals()
+
+        self.reminders_map: dict[str, Path] = {}
+        self._load_reminders()
 
 
     @property
@@ -49,6 +53,7 @@ class Vault:
             "projects": self.projects,
             "daily": self.daily,
             "archive": self.archive,
+            "reminders": self.reminders,
         }
 
     def _ensure_exists(self):
@@ -427,3 +432,198 @@ class Vault:
                 continue
         journals_list.sort(key=lambda j: j.created, reverse=True)
         return journals_list
+
+    def _load_reminders(self):
+        """
+        Scan reminders directory and populate the reminders map.
+        """
+        if not self.reminders.exists():
+            return
+        for path in self.reminders.glob("*.md"):
+            self.reminders_map[path.stem] = path
+
+    def create_reminder(self, text: str, due_time: datetime) -> Reminder:
+        """
+        Create a new reminder and write its Markdown file.
+        """
+        reminder_id = secrets.token_hex(4)
+        now = datetime.now()
+        reminder = Reminder(
+            id=reminder_id,
+            text=text,
+            due_time=due_time,
+            status="pending",
+            created_at=now,
+        )
+
+        path = self.reminders / f"{reminder_id}.md"
+
+        post = frontmatter.Post(
+            content=text,
+            id=reminder.id,
+            text=reminder.text,
+            due_time=reminder.due_time.isoformat(),
+            status=reminder.status,
+            created_at=reminder.created_at.isoformat(),
+        )
+
+        with open(path, "w", encoding="utf-8") as f:
+            frontmatter.dump(post, f)
+
+        self.reminders_map[reminder_id] = path
+        return reminder
+
+    def _parse_reminder(self, path: Path) -> Reminder:
+        """
+        Helper to parse a Reminder object from its markdown file path.
+        """
+        post = frontmatter.load(path)
+
+        due_time = post.metadata.get("due_time")
+        if isinstance(due_time, str):
+            due_time = datetime.fromisoformat(due_time)
+        elif not isinstance(due_time, datetime):
+            due_time = datetime.now()
+
+        created_at = post.metadata.get("created_at")
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        elif not isinstance(created_at, datetime):
+            created_at = datetime.now()
+
+        return Reminder(
+            id=post.metadata.get("id", path.stem),
+            text=post.metadata.get("text", post.content),
+            due_time=due_time,
+            status=post.metadata.get("status", "pending"),
+            created_at=created_at,
+        )
+
+    def update_reminder(
+        self,
+        reminder_id: str,
+        text: str | None = None,
+        due_time: datetime | None = None,
+        status: str | None = None,
+    ) -> Reminder:
+        """
+        Update an existing reminder.
+        """
+        path = self.reminders_map.get(reminder_id)
+        if not path or not path.exists():
+            raise FileNotFoundError(f"Reminder {reminder_id} not found.")
+
+        post = frontmatter.load(path)
+
+        if text is not None:
+            post.metadata["text"] = text
+            post.content = text
+        if due_time is not None:
+            post.metadata["due_time"] = due_time.isoformat()
+        if status is not None:
+            post.metadata["status"] = status
+
+        with open(path, "w", encoding="utf-8") as f:
+            frontmatter.dump(post, f)
+
+        return self._parse_reminder(path)
+
+    def delete_reminder(self, reminder_id: str) -> bool:
+        """
+        Delete a reminder.
+        """
+        path = self.reminders_map.get(reminder_id)
+        if not path or not path.exists():
+            return False
+
+        path.unlink()
+        self.reminders_map.pop(reminder_id, None)
+        return True
+
+    def list_reminders(self) -> list[Reminder]:
+        """
+        List all reminders in the vault, sorted by due time.
+        """
+        reminders_list = []
+        for r_id in list(self.reminders_map.keys()):
+            try:
+                path = self.reminders_map[r_id]
+                reminders_list.append(self._parse_reminder(path))
+            except Exception:
+                continue
+        reminders_list.sort(key=lambda r: r.due_time)
+        return reminders_list
+
+    def create_checkin(self, message: str) -> dict:
+        """
+        Create a new check-in notification file in vault/daily.
+        """
+        checkin_id = secrets.token_hex(4)
+        now = datetime.now()
+        path = self.daily / f"checkin_{checkin_id}.md"
+
+        post = frontmatter.Post(
+            content=message,
+            id=checkin_id,
+            timestamp=now.isoformat(),
+            read=False,
+        )
+
+        with open(path, "w", encoding="utf-8") as f:
+            frontmatter.dump(post, f)
+
+        return {
+            "id": checkin_id,
+            "message": message,
+            "timestamp": now.isoformat(),
+            "read": False,
+        }
+
+    def list_pending_checkins(self) -> list[dict]:
+        """
+        List all unread check-in notifications.
+        """
+        if not self.daily.exists():
+            return []
+        pending = []
+        for path in self.daily.glob("checkin_*.md"):
+            try:
+                post = frontmatter.load(path)
+                if not post.metadata.get("read", False):
+                    pending.append({
+                        "id": post.metadata.get("id", path.stem.replace("checkin_", "")),
+                        "message": post.content,
+                        "timestamp": post.metadata.get("timestamp"),
+                        "read": False,
+                    })
+            except Exception:
+                continue
+        pending.sort(key=lambda x: x["timestamp"] or "")
+        return pending
+
+    def mark_checkin_as_read(self, checkin_id: str) -> bool:
+        """
+        Mark a specific check-in notification as read.
+        """
+        path = self.daily / f"checkin_{checkin_id}.md"
+        if not path.exists():
+            for p in self.daily.glob("checkin_*.md"):
+                try:
+                    post = frontmatter.load(p)
+                    if post.metadata.get("id") == checkin_id:
+                        path = p
+                        break
+                except Exception:
+                    continue
+
+        if not path.exists():
+            return False
+
+        try:
+            post = frontmatter.load(path)
+            post.metadata["read"] = True
+            with open(path, "w", encoding="utf-8") as f:
+                frontmatter.dump(post, f)
+            return True
+        except Exception:
+            return False

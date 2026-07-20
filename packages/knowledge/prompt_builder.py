@@ -1,6 +1,5 @@
 from .schemas import Chunk, Message
 
-
 class PromptBuilder:
     """
     Assembles the final structured prompt (list of Message objects) for LLM consumption.

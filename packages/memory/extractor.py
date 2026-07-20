@@ -35,9 +35,11 @@ class MemoryExtractor:
         try:
             res = self.llm_provider.generate(prompt)
             if inspect.iscoroutine(res):
-                response_text = await res
+                result = await res
             else:
-                response_text = res
+                result = res
+            # Provider may return dict with content + metrics, or plain string
+            response_text = result["content"] if isinstance(result, dict) else result
         except Exception:
             return MemoryExtraction(
                 preferences=[], goals=[], projects=[], people=[], habits=[], memories=[], ignore=True

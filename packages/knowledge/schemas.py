@@ -20,6 +20,9 @@ class Message:
 
 @dataclass
 class Goal:
+    """
+    Represents a goal for the user.
+    """
     id: str
     title: str
     status: str
@@ -31,6 +34,9 @@ class Goal:
 
 @dataclass
 class Journal:
+    """
+    Represents a journal entry.
+    """
     id: str
     created: datetime
     updated: datetime
@@ -39,6 +45,9 @@ class Journal:
 
 @dataclass
 class Chunk:
+    """
+    Represents a chunk of text extracted from a conversation or document.
+    """
     id: str
     text: str
     metadata: dict[str, Any]
@@ -56,3 +65,15 @@ class MemoryExtraction:
     habits: list[str]
     memories: list[str]
     ignore: bool = False
+
+
+@dataclass
+class Reminder:
+    """
+    Represents a reminder for the user.
+    """
+    id: str
+    text: str
+    due_time: datetime
+    status: str  # "pending", "triggered", "dismissed"
+    created_at: datetime

@@ -46,13 +46,14 @@ export default function App() {
     setIsTyping(true);
 
     try {
-      const reply = await sendMessage(userText);
+      const { reply, metrics } = await sendMessage(userText);
 
       setMessages((prev) => [
         ...prev,
         {
           text: reply,
           sender: "assistant",
+          metrics,
         },
       ]);
     } catch {
@@ -80,6 +81,11 @@ export default function App() {
             <div className={`bubble ${message.sender}`}>
               {message.text}
             </div>
+            {message.sender === "assistant" && message.metrics && (
+              <div className="metrics">
+                {message.metrics.response_time_sec}s · {message.metrics.tokens_per_sec} tok/s · {message.metrics.tokens_generated} tokens · {message.metrics.model}
+              </div>
+            )}
           </div>
         ))}
 

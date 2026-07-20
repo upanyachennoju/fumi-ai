@@ -1,6 +1,15 @@
+import type { ResponseMetrics } from "./types";
+
 const API_URL = "http://127.0.0.1:8000";
 
-export async function sendMessage(message: string): Promise<string> {
+type ChatApiResponse = {
+  response: string;
+  metrics?: ResponseMetrics;
+};
+
+export async function sendMessage(
+  message: string
+): Promise<{ reply: string; metrics?: ResponseMetrics }> {
   const response = await fetch(`${API_URL}/chat`, {
     method: "POST",
     headers: {
@@ -15,7 +24,7 @@ export async function sendMessage(message: string): Promise<string> {
     throw new Error("Failed to contact backend.");
   }
 
-  const data = await response.json();
+  const data: ChatApiResponse = await response.json();
 
-  return data.response;
+  return { reply: data.response, metrics: data.metrics };
 }
