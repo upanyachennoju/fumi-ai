@@ -1,17 +1,7 @@
-# Fumi Desktop Client
+# Tauri + React + Typescript
 
-This is the Tauri + React desktop client for Fumi.
+This template should help get you started developing with Tauri, React and Typescript in Vite.
 
-## Prerequisites
-- Node.js (v18+)
-- Rust (for Tauri backend compilation)
+## Recommended IDE Setup
 
-## Setup and Run
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Run in development mode:
-   ```bash
-   npm run tauri dev
-   ```
+- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
