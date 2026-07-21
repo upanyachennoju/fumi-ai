@@ -21,7 +21,7 @@ from packages.schedulers.jobs import run_daily_checkin, run_reminder_check
 
 
 class MockLLMProvider:
-    def __init__(self, model="qwen3:4b"):
+    def __init__(self, model="qwen2.5:7b-instruct"):
         self.model = model
 
     def generate(self, messages):

@@ -1,3 +1,4 @@
+from datetime import datetime
 from .schemas import Chunk, Message
 
 class PromptBuilder:
@@ -32,11 +33,14 @@ class PromptBuilder:
                 context_blocks.append(f"---\n{chunk.text}")
             context_str = "\n".join(context_blocks)
 
-        # Build the system message incorporating context if available
-        full_system_content = system_prompt
+        # Build the system message incorporating time and context if available
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S (%A)")
+        time_info = f"Current System Date & Time: {now_str}"
+        full_system_content = f"{system_prompt}\n\n{time_info}"
+
         if context_str:
             formatted_context = self.context_template.format(context=context_str)
-            full_system_content = f"{system_prompt}\n\n{formatted_context}"
+            full_system_content = f"{full_system_content}\n\n{formatted_context}"
 
         messages = [Message(role="system", content=full_system_content)]
 
