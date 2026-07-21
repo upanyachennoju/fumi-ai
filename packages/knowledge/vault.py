@@ -444,8 +444,17 @@ class Vault:
 
     def create_reminder(self, text: str, due_time: datetime) -> Reminder:
         """
-        Create a new reminder and write its Markdown file.
+        Create a new reminder and write its Markdown file. Skips duplicate pending reminders.
         """
+        cleaned_text = text.strip().lower()
+        for existing_id in list(self.reminders_map.keys()):
+            try:
+                existing_rem = self.load_reminder(existing_id)
+                if existing_rem.status == "pending" and existing_rem.text.strip().lower() == cleaned_text:
+                    return existing_rem
+            except Exception:
+                continue
+
         reminder_id = secrets.token_hex(4)
         now = datetime.now()
         reminder = Reminder(

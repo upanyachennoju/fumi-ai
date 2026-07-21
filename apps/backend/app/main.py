@@ -92,7 +92,7 @@ def get_config():
         "chroma_db_path": os.getenv("CHROMA_DB_PATH", "./chroma"),
         "vault_path": os.getenv("VAULT_PATH", "./vault"),
         "llm_provider": os.getenv("llm_provider", "ollama"),
-        "llm_model": os.getenv("llm_model", "qwen3:4b"),
+        "llm_model": os.getenv("llm_model", "qwen2.5:7b-instruct"),
         "llm_embed": os.getenv("llm_embed", "nomic-embed-text")
     }
 

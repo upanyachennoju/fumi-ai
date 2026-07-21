@@ -6,7 +6,7 @@ class BaseLLMProvider(ABC):
     """Abstract base class for all LLM providers in Fumi."""
 
     @abstractmethod
-    def generate(self, message: str | list[Any]) -> str:
+    def generate(self, message: str | list[Any], tools: list[Any] | None = None) -> Any:
         """Generate a response for the given user message or structured messages."""
         pass
 

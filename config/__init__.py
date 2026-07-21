@@ -8,7 +8,7 @@ toml_path = config_dir / "settings.toml"
 
 # Default values
 llm_provider = "ollama"
-llm_model = "qwen3:4b"
+llm_model = "qwen2.5:7b-instruct"
 llm_embed = "nomic-embed-text"
 
 # Parse settings.toml if it exists

@@ -6,11 +6,14 @@ from .base import EmbeddingProvider
 from packages.knowledge.schemas import Message
 from config import llm_model, llm_embed
 
+import json
+import re
+
 class OllamaProvider(BaseLLMProvider):
     def __init__(self, model: str = llm_model):
         self.model = model
 
-    async def generate(self, message: str | list[Message]) -> dict:
+    async def generate(self, message: str | list[Message], tools: list[dict] | None = None) -> dict:
         if isinstance(message, str):
             formatted_messages = [
                 {
@@ -27,12 +30,30 @@ class OllamaProvider(BaseLLMProvider):
                 for msg in message
             ]
 
+        formatted_tools = None
+        if tools:
+            formatted_tools = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t["name"],
+                        "description": t["description"],
+                        "parameters": t["parameters"],
+                    },
+                }
+                for t in tools
+            ]
+
         start = time.perf_counter()
 
-        response = chat(
-            model=self.model,
-            messages=formatted_messages,
-        )
+        kwargs = {
+            "model": self.model,
+            "messages": formatted_messages,
+        }
+        if formatted_tools:
+            kwargs["tools"] = formatted_tools
+
+        response = chat(**kwargs)
 
         elapsed = time.perf_counter() - start
 
@@ -47,8 +68,44 @@ class OllamaProvider(BaseLLMProvider):
             # fallback: estimate from wall-clock time
             tokens_per_sec = eval_count / elapsed if elapsed > 0 else 0.0
 
+        # Extract tool calls if present
+        raw_message = getattr(response, "message", None)
+        content = getattr(raw_message, "content", "") if raw_message else ""
+        tool_calls = []
+
+        if raw_message:
+            raw_tool_calls = getattr(raw_message, "tool_calls", None)
+            if raw_tool_calls:
+                for tc in raw_tool_calls:
+                    func = getattr(tc, "function", None)
+                    if func:
+                        name = getattr(func, "name", None)
+                        args = getattr(func, "arguments", {})
+                        if isinstance(args, str):
+                            try:
+                                args = json.loads(args)
+                            except Exception:
+                                pass
+                        if name:
+                            tool_calls.append({"name": name, "args": args or {}})
+
+        # Fallback JSON parsing if native tool_calls were not parsed but content contains JSON tool block
+        if not tool_calls and content and tools:
+            pattern = r'\{[^{}]*"(?:name|tool)"[^{}]*\}'
+            matches = re.findall(pattern, content, re.DOTALL)
+            for match in matches:
+                try:
+                    data = json.loads(match)
+                    name = data.get("name") or data.get("tool")
+                    args = data.get("args") or data.get("arguments") or data.get("parameters") or {}
+                    if name and isinstance(args, dict):
+                        tool_calls.append({"name": name, "args": args})
+                except Exception:
+                    pass
+
         return {
-            "content": response.message.content,
+            "content": content or "",
+            "tool_calls": tool_calls,
             "metrics": {
                 "response_time_sec": round(elapsed, 2),
                 "tokens_generated": eval_count,
