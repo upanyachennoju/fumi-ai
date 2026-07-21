@@ -2,7 +2,7 @@ import inspect
 from typing import Union
 from packages.knowledge.schemas import Message
 from packages.providers.base import BaseLLMProvider
-from .prompts import SUMMARIZATION_PROMPT
+from packages.prompts.extraction_prompts import SUMMARIZATION_PROMPT
 
 
 class ConversationSummarizer:

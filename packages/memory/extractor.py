@@ -5,7 +5,7 @@ from typing import Union
 from packages.knowledge.schemas import Message
 from packages.providers.base import BaseLLMProvider
 from .schemas import MemoryExtraction
-from packages.prompts import EXTRACTION_PROMPT
+from packages.prompts.extraction_prompts import EXTRACTION_PROMPT
 
 class MemoryExtractor:
     """
