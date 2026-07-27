@@ -24,7 +24,7 @@ class Retriever:
         """
         query_embedding = await self.embedding_provider.embed(query)
 
-        results = self.index.search(
+        results = await self.index.search(
             query_embeddings=[query_embedding],
             n_results=n_results,
             where=where,
@@ -34,9 +34,9 @@ class Retriever:
         for r in results:
             chunks.append(
                 Chunk(
-                    id=r["id"],
-                    text=r["text"],
-                    metadata=r["metadata"],
+                    id=r.id,
+                    text=r.text,
+                    metadata=r.metadata,
                 )
             )
         return chunks

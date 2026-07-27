@@ -10,6 +10,7 @@ toml_path = config_dir / "settings.toml"
 llm_provider = "ollama"
 llm_model = "qwen2.5:7b-instruct"
 llm_embed = "nomic-embed-text"
+similarity_threshold = 0.90
 
 # Parse settings.toml if it exists
 if toml_path.exists():
@@ -19,5 +20,6 @@ if toml_path.exists():
             llm_provider = data.get("llm_provider", llm_provider)
             llm_model = data.get("llm_model", llm_model)
             llm_embed = data.get("llm_embed", llm_embed)
+            similarity_threshold = float(data.get("similarity_threshold", similarity_threshold))
     except Exception:
         pass

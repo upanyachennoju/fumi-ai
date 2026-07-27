@@ -2,7 +2,10 @@ import sys
 from pathlib import Path
 import asyncio
 
-# Bootstrap project root to allow importing packages
+# Bootstrap project root and virtualenv packages to allow importing packages in sandbox
+venv_site = Path(__file__).resolve().parent.parent / f".venv/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+if venv_site.exists():
+    sys.path.insert(0, str(venv_site))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from packages.knowledge.vault import Vault
@@ -13,6 +16,8 @@ from packages.memory.summarizer import ConversationSummarizer
 from packages.memory.extractor import MemoryExtractor
 from packages.memory.manager import MemoryManager
 from packages.memory.pipeline import MemoryPipeline
+from packages.memory.resolver import MemoryResolver
+from packages.memory.links import LinkBuilder
 from packages.knowledge.schemas import Message
 
 
@@ -22,12 +27,15 @@ async def main():
     index = VectorIndex(persist_directory="./chroma")
     llm = OllamaProvider()
     embedder = OllamaEmbeddingProvider()
+    index.embedding_provider = embedder
 
     # Create instances of core modules
     indexer = Indexer(vault, index, embedder)
     summarizer = ConversationSummarizer(llm)
     extractor = MemoryExtractor(llm)
-    manager = MemoryManager(vault)
+    resolver = MemoryResolver(index, llm)
+    manager = MemoryManager(vault, resolver)
+    link_builder = LinkBuilder(vault)
 
     # Initialize the memory pipeline
     pipeline = MemoryPipeline(
@@ -36,6 +44,8 @@ async def main():
         summarizer=summarizer,
         extractor=extractor,
         manager=manager,
+        resolver=resolver,
+        link_builder=link_builder,
     )
 
     # 1. Create a dummy active conversation session
@@ -71,15 +81,15 @@ async def main():
     # 4. Search the vector index to verify indexing
     print("\nSearching index for 'espresso'...")
     query_vector = await embedder.embed("espresso")
-    results = index.search(query_embeddings=[query_vector], n_results=3)
+    results = await index.search(query_embeddings=[query_vector], n_results=3)
     for i, res in enumerate(results, start=1):
-        print(f"Result {i}: {res['text']} (Type: {res['metadata'].get('type')})")
+        print(f"Result {i}: {res.text} (Type: {res.metadata.get('type')})")
 
     print("\nSearching index for 'VS Code'...")
     query_vector_vscode = await embedder.embed("VS Code")
-    results_vscode = index.search(query_embeddings=[query_vector_vscode], n_results=3)
+    results_vscode = await index.search(query_embeddings=[query_vector_vscode], n_results=3)
     for i, res in enumerate(results_vscode, start=1):
-        print(f"Result {i}: {res['text']} (Type: {res['metadata'].get('type')})")
+        print(f"Result {i}: {res.text} (Type: {res.metadata.get('type')})")
 
 
 if __name__ == "__main__":

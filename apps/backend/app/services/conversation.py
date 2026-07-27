@@ -12,6 +12,8 @@ from packages.memory.summarizer import ConversationSummarizer
 from packages.memory.extractor import MemoryExtractor
 from packages.memory.manager import MemoryManager
 from packages.memory.pipeline import MemoryPipeline
+from packages.memory.resolver import MemoryResolver
+from packages.memory.links import LinkBuilder
 from packages.prompts.system_prompt import SYSTEM_PROMPT
 
 from packages.tools.registry import ToolRegistry
@@ -27,8 +29,10 @@ class ConversationService:
     def __init__(self, registry: ToolRegistry | None = None):
         self.provider = get_llm_provider()
         self.vault = Vault()
-        self.index = VectorIndex()
+        self.index = VectorIndex(embedding_provider=self.embedding_provider) if hasattr(self, 'embedding_provider') else VectorIndex()
         self.embedding_provider = OllamaEmbeddingProvider()
+        # Ensure VectorIndex has the embedding provider set
+        self.index.embedding_provider = self.embedding_provider
         self.retriever = Retriever(self.index, self.embedding_provider)
         self.prompt_builder = PromptBuilder()
 
@@ -54,13 +58,17 @@ class ConversationService:
         self.indexer = Indexer(self.vault, self.index, self.embedding_provider)
         self.summarizer = ConversationSummarizer(self.provider)
         self.extractor = MemoryExtractor(self.provider)
-        self.manager = MemoryManager(self.vault)
+        self.resolver = MemoryResolver(self.index, self.provider)
+        self.manager = MemoryManager(self.vault, self.resolver)
+        self.link_builder = LinkBuilder(self.vault)
         self.pipeline = MemoryPipeline(
             vault=self.vault,
             indexer=self.indexer,
             summarizer=self.summarizer,
             extractor=self.extractor,
             manager=self.manager,
+            resolver=self.resolver,
+            link_builder=self.link_builder,
         )
 
     async def chat(self, message: str) -> dict:

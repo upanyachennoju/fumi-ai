@@ -1,3 +1,4 @@
 llm_provider = "ollama"
 llm_model = "qwen2.5:7b-instruct"
 llm_embed = "nomic-embed-text"
+similarity_threshold = 0.90
